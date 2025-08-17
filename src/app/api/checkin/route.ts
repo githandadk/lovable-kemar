@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!, // server-only
   { auth: { persistSession: false } }
 )
 
@@ -14,7 +14,6 @@ export async function POST(req: Request) {
     const { data, error } = await supabaseAdmin.functions.invoke('checkin', { body })
 
     if (error) {
-      // expose as much as possible to debug
       return NextResponse.json(
         {
           ok: false,

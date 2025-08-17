@@ -19,6 +19,7 @@ export default function ScannerPage({ params }: { params: { eventId: string } })
     const json = await res.json()
     setResult(json)
     setLoading(false)
+    
   }
 
   return (
