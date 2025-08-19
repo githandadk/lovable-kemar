@@ -2,24 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type Params = { params: { slug: string } };
+type Params = { params: Promise<{ slug: string }> };
 
 export default async function EventDetailPage({ params }: Params) {
-  const { slug } = params;
+  const { slug } = await params; // ✅ await params
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, name, slug, timezone, start_date, end_date, location, description")
+    .select(
+      "id, name, slug, timezone, start_date, end_date, location, description"
+    )
     .eq("slug", slug)
     .single();
 
-  if (error) {
-    console.error(error);
-    notFound();
-  }
-  if (!event) notFound();
+  if (error || !event) notFound();
 
-  // Optional: pull some related data (buildings or meals) to show context
   const { data: buildings } = await supabase
     .from("campus_buildings")
     .select("code, name, gender_policy, is_accessible")
@@ -83,19 +80,4 @@ export default async function EventDetailPage({ params }: Params) {
       ) : null}
     </main>
   );
-}
-
-export async function generateStaticParams() {
-  // Only slugs; keep anon key usage minimal
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/events?select=slug`, {
-    headers: {
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-    },
-    // Revalidate at build or use cache: 'no-store' for dynamic
-    cache: "no-store" // or remove to allow caching
-  });
-
-  const events = (await res.json()) as { slug: string }[];
-  return events.map((e) => ({ slug: e.slug }));
 }
