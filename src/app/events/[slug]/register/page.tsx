@@ -29,7 +29,7 @@ export default function StartRegistrationPage({
         setBusy(false);
         return;
       }
-      router.replace(`/registrations/${json.registrationId}/attendees`);
+      router.replace(`/registrations/${json.registrationId}/rooms`);
     } catch (e: any) {
       setMsg(e?.message ?? "Network error");
       setBusy(false);
