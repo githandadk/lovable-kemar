@@ -75,7 +75,7 @@ export default function RoomsPage({
     }
   }
 
-  async function book(roomId: string) {
+  async function book(room: Room) {
     if (!ctx.ok || !ctx.eventId) return;
     if (!checkin || !checkout) {
       setMsg("Select dates first");
@@ -89,7 +89,7 @@ export default function RoomsPage({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           registrationId: regId,
-          lodging_option_id: lodgingId || null,
+          lodging_option_id: room.lodging_option_id,
           checkin_date: checkin,
           checkout_date: checkout,
           num_keys: keys,
@@ -108,13 +108,17 @@ export default function RoomsPage({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           room_booking_id: created.roomBookingId,
-          room_id: roomId,
+          room_id: room.id,
         }),
       });
       const assigned = await assignRes.json();
       if (!assigned.ok) {
         setMsg(assigned.error || "Assign room failed");
-      } else setMsg("Room booked!");
+      } else {
+        setMsg("Room booked!");
+        // Refresh the search to remove the booked room from the list
+        await search();
+      }
     } catch (e: any) {
       setMsg(e?.message ?? "Network error");
     } finally {
@@ -227,7 +231,7 @@ export default function RoomsPage({
                       </div>
                     </div>
                     <button
-                      onClick={() => book(r.id)}
+                      onClick={() => book(r)}
                       disabled={busy}
                       className="rounded border px-3 py-1 hover:bg-gray-50"
                     >

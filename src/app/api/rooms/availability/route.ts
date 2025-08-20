@@ -54,8 +54,8 @@ export async function GET(req: Request) {
     .from("room_bookings")
     .select("id")
     .eq("event_id", eventId)
-    .lt("checkin_date", checkout) // overlap condition
-    .gt("checkout_date", checkin); // overlap condition
+    .lte("checkin_date", checkout) // Inclusive overlap condition
+    .gte("checkout_date", checkin); // Inclusive overlap condition
 
   if (bookedErr)
     return NextResponse.json(
