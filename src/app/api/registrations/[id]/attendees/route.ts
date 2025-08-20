@@ -1,13 +1,28 @@
 // src/app/api/registrations/[id]/attendees/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> } // ⬅️ params is async
 ) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const { id } = await ctx.params; // ⬅️ await it
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => cookieStore.get(name)?.value,
+        set: (name: string, value: string, options: any) =>
+          cookieStore.set({ name, value, ...options }),
+        remove: (name: string, options: any) =>
+          cookieStore.set({ name, value: "", ...options, maxAge: 0 }),
+      },
+    }
+  );
 
   const {
     data: { user },
@@ -21,7 +36,7 @@ export async function GET(
   const { data: reg, error: regErr } = await supabase
     .from("registrations")
     .select("id, created_by")
-    .eq("id", params.id)
+    .eq("id", id) // ⬅️ use resolved id
     .single();
 
   if (regErr || !reg)

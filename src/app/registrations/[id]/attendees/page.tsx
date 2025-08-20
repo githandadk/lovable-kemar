@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 
 type Attendee = { id: string; full_name: string; department_code: string };
 
-export default function AttendeesPage({ params }: { params: { id: string } }) {
+export default function AttendeesPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  // Unwrap the params Promise using React.use()
+  const resolvedParams = use(params);
   const [list, setList] = useState<Attendee[]>([]);
   const [fullName, setFullName] = useState("");
   const [dept, setDept] = useState("EM_Adult");
@@ -14,9 +20,12 @@ export default function AttendeesPage({ params }: { params: { id: string } }) {
   async function load() {
     setMsg("");
     try {
-      const res = await fetch(`/api/registrations/${params.id}/attendees`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/registrations/${resolvedParams.id}/attendees`,
+        {
+          cache: "no-store",
+        }
+      );
       const json = await res.json();
       if (json.ok) setList(json.attendees);
       else setMsg(json.error || "Failed to load attendees");
@@ -40,7 +49,7 @@ export default function AttendeesPage({ params }: { params: { id: string } }) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          registrationId: params.id,
+          registrationId: resolvedParams.id,
           full_name: fullName,
           department_code: dept,
         }),

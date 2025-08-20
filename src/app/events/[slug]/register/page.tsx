@@ -1,14 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 
 export default function StartRegistrationPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  // This is a Client Component, so params is synchronous here.
+  // Unwrap the params Promise using React.use(); THIS PAGE BY CLAUDE
+  const resolvedParams = use(params);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -20,7 +21,7 @@ export default function StartRegistrationPage({
       const res = await fetch("/api/registrations/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventSlug: params.slug }),
+        body: JSON.stringify({ eventSlug: resolvedParams.slug }),
       });
       const json = await res.json();
       if (!json.ok) {
@@ -39,7 +40,7 @@ export default function StartRegistrationPage({
     <main className="p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Start registration</h1>
       <p>
-        We’ll create a draft registration for you. You can add attendees next.
+        We'll create a draft registration for you. You can add attendees next.
       </p>
       <button
         onClick={start}

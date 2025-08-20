@@ -1,9 +1,28 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 
 export async function POST(req: Request) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: "", ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
+
   const body = await req.json();
   const { registrationId, full_name, department_code } = body;
 
@@ -25,13 +44,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // Load the registration & event
+  // Load the registration & ensure ownership
   const { data: reg, error: regErr } = await supabase
     .from("registrations")
     .select("id, event_id, created_by")
     .eq("id", registrationId)
     .single();
-
   if (regErr || !reg) {
     return NextResponse.json(
       { ok: false, error: "Registration not found" },
@@ -52,13 +70,14 @@ export async function POST(req: Request) {
     .eq("event_id", reg.event_id)
     .eq("department_code", department_code)
     .single();
-
   if (depErr || !dept) {
     return NextResponse.json(
       { ok: false, error: "Department not configured" },
       { status: 400 }
     );
   }
+
+  const qrUid = crypto.randomUUID(); // simple unique QR id
 
   const { data: inserted, error: insErr } = await supabase
     .from("attendees")
@@ -68,10 +87,11 @@ export async function POST(req: Request) {
       full_name,
       department_code,
       department_surcharge: dept.surcharge,
-      qr_code_uid: crypto.randomUUID(), // simple QR id; you can change later
+      qr_code_uid: qrUid,
       ticket_status: "active",
     })
-    .select("id, full_name, department_code");
+    .select("id, full_name, department_code")
+    .single();
 
   if (insErr) {
     return NextResponse.json(
@@ -80,5 +100,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, attendee: inserted?.[0] });
+  return NextResponse.json({ ok: true, attendee: inserted });
 }
