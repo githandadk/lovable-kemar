@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { set } from "zod";
 
 type Attendee = { id: string; full_name: string; department_code: string };
+type Dept = { department_code: string; surcharge: number };
 
 export default function AttendeesPage({
   params,
@@ -13,11 +15,12 @@ export default function AttendeesPage({
   const resolvedParams = use(params);
   const [list, setList] = useState<Attendee[]>([]);
   const [fullName, setFullName] = useState("");
-  const [dept, setDept] = useState("EM_Adult");
+  const [dept, setDept] = useState("");
+  const [departments, setDepartments] = useState<Dept[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
+  async function loadAttendees() {
     setMsg("");
     try {
       const res = await fetch(
@@ -34,14 +37,42 @@ export default function AttendeesPage({
     }
   }
 
+  async function loadDepartments() {
+    const res = await fetch(
+      `/api/registrations/${resolvedParams.id}/departments`,
+      {
+        cache: "no-store",
+      }
+    );
+    const json = await res.json();
+    if (json.ok) {
+      setDepartments(json.departments);
+      if (!dept && json.departments.length)
+        setDept(json.departments[0].department_code);
+    }
+  }
+
+  useEffect(() => {
+    loadAttendees();
+    loadDepartments(); /* eslint-disable-next-line */
+  }, []);
+
   // Provide a tiny read route *inline* using route segment config:
   // Create file: src/app/registrations/[id]/attendees/route.ts for GET
   // (See below)
-  useEffect(() => {
-    load();
-  }, []);
 
   async function add() {
+    console.log("Starting add function...");
+    console.log("Params:", {
+      registrationId: resolvedParams.id,
+      full_name: fullName,
+      department_code: dept,
+    });
+
+    if (!dept) {
+      setMsg("Please choose a department");
+      return;
+    }
     setBusy(true);
     setMsg("");
     try {
@@ -54,11 +85,23 @@ export default function AttendeesPage({
           department_code: dept,
         }),
       });
+      console.log("Response status:", res.status);
+      console.log("Response ok:", res.ok);
+
       const json = await res.json();
-      if (!json.ok) setMsg(json.error || "Add failed");
-      setFullName("");
-      await load();
+
+      console.log("Response JSON:", json);
+
+      if (json.ok) {
+        console.log("Success! Clearing form and reloading");
+        setFullName("");
+        await loadAttendees();
+      } else {
+        console.log("API returned Error:", json.error);
+        setMsg(json.error || "Add failed");
+      }
     } catch (e: any) {
+      console.log("Caught error:", e);
       setMsg(e?.message ?? "Network error");
     } finally {
       setBusy(false);
@@ -85,19 +128,23 @@ export default function AttendeesPage({
             value={dept}
             onChange={(e) => setDept(e.target.value)}
           >
-            <option>EM_Adult</option>
-            <option>EM_YA</option>
-            <option>EM_College</option>
-            <option>EM_HS</option>
-            <option>EM_JR</option>
-            <option>EM_Teen</option>
-            <option>EM_VBS</option>
-            <option>EM_Cradle</option>
+            {departments.map((d) => (
+              <option key={d.department_code} value={d.department_code}>
+                {d.department_code}
+              </option>
+            ))}
           </select>
+          {!departments.length && (
+            <p className="text-xs text-gray-600">
+              No departments configured for this event. Ask an admin to add
+              surcharges.
+            </p>
+          )}
         </div>
+
         <button
           onClick={add}
-          disabled={busy}
+          disabled={busy || !departments.length}
           className="rounded border px-4 py-2 hover:bg-gray-50"
         >
           {busy ? "Adding…" : "Add attendee"}
