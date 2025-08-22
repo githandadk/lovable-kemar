@@ -8,6 +8,37 @@ type Row = {
   event_name: string;
   registration_id: string;
 };
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export default function AttendeesTable({ attendees }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Role</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {attendees.map((a: any) => (
+          <TableRow key={a.id}>
+            <TableCell>{a.name}</TableCell>
+            <TableCell>{a.email}</TableCell>
+            <TableCell>{a.role}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
 export default function AdminAttendees() {
   const [rows, setRows] = useState<Row[]>([]);
